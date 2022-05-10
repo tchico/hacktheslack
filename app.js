@@ -17,11 +17,7 @@ const app = new App({
     logLevel: LogLevel.DEBUG,
   });
   
-  // Listens to incoming messages that contain "hello"
-  app.message('hello', async ({ message, say }) => {
-    // say() sends a message to the channel where the event was triggered
-    await say(`Hey there <@${message.user}>!`);
-  });
+
 
 (async () => {
   // Start your app
@@ -30,6 +26,22 @@ const app = new App({
 })();
 
 
+
+// Listens to incoming messages that contain "hello"
+app.message('hello hack', async ({ message, say }) => {
+  // say() sends a message to the channel where the event was triggered
+  await say(`Hey there <@${message.user}>!`);
+});
+
+// Listens to incoming messages that contain "hello"
+app.message('anyone in the office today?', async ({ message, say }) => {
+  // say() sends a message to the channel where the event was triggered
+  var threadId = message.ts;
+  var channelId = message.channel;
+
+  message = `Hey there <@${message.user}>! Today these workmates are in the office: \n- Steven Mulkerrins`;
+  await replyMessage(channelId, threadId, message);
+});
 
 
 
@@ -48,6 +60,14 @@ app.event('app_home_opened', async ({ event, client, context }) => {
   
           /* body of the view */
           "blocks": [
+            {
+              "type": "header",
+              "text": {
+                "type": "plain_text",
+                "text": "Your Working from Office routine...",
+                "emoji": true
+              }
+            },
             {
               type: "section",
               text: {
@@ -113,31 +133,65 @@ app.event('app_home_opened', async ({ event, client, context }) => {
               type: "divider",
             },
             {
-              type: "section",
-              text: {
-                type: "mrkdwn",
-                text: "When you're on PTO, do you want me to reply automatically to messages?",
+              "type": "header",
+              "text": {
+                "type": "plain_text",
+                "text": "Inform Channel when you are on PTO",
+                "emoji": true
               }
             },
             {
-              type: "actions",
-              elements: [
-                {
-                  type: "checkboxes",
-                  options: [
-                    {
-                      text: {
-                        type: "plain_text",
-                        text: "check this to enable automatic replies when you're on PTO.",
-                        emoji: true,
-                      },
-                      value: "reply-pto",
-                    }
-                  ],
-                  action_id: "set_pto_reply",
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "➕ To start informing your team, select the team or project channel from the right.  Make sure I'm invited: Type `/invite @TaskBot` from the channel"
+              },
+              "accessory": {
+                "type": "conversations_select",
+                "placeholder": {
+                  "type": "plain_text",
+                  "text": "Select a channel...",
+                  "emoji": true
                 },
-              ],
+                action_id: "select_channel",
+              }
             },
+            {
+              type: "divider",
+            },
+            {
+              "type": "header",
+              "text": {
+                "type": "plain_text",
+                "text": "Away at Lunch",
+                "emoji": true
+              }
+            },  
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Would you like me to place you away for lunch every day at a specific time?"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Select your typical lunch time..."
+                  },
+                  "accessory": {
+                    "type": "timepicker",
+                    "initial_time": "13:00",
+                    "placeholder": {
+                      "type": "plain_text",
+                      "text": "Select time",
+                      "emoji": true
+                    },
+                    "action_id": "timepicker-action"
+                  }
+               
+            }
           ]
         }
       });
@@ -149,7 +203,7 @@ app.event('app_home_opened', async ({ event, client, context }) => {
   
   
   
-// This listener will only be called when the `action_id` matches 'select_user' AND the `block_id` matches 'assign_ticket'
+// This listener will only be called when the `action_id` matches 'set_days'
 app.action({
     action_id: 'set_days'
     }, async ({ body, action, ack, say, client }) => {
@@ -185,6 +239,99 @@ app.action({
     }
 });
 
+
+// This listener will only be called when the `action_id` matches 'set_pto_reply'
+app.action({
+  action_id: 'set_pto_reply'
+  }, async ({ body, action, ack, say, client }) => {
+  
+    await   ack();
+    //TODO: store this preference for the reply. 
+});
+
+
+// This listener will only be called when the `action_id` matches 'save_channel'
+app.action({
+  action_id: 'select_channel'
+  }, async ({ body, action, ack, say, client }) => {
+    await   ack();
+
+
+    var announce_message = "*Hello team! Our workmates below are on PTO today*.\n- joao.esteves \n- steven.mulkerrins";
+
+    publishMessage(action.selected_conversation, announce_message);
+    
+});
+
+
+// Post a message to a channel your app is in using ID and message text
+async function publishMessage(id, text) {
+  try {
+    // Call the chat.postMessage method using the built-in WebClient
+    const result = await app.client.chat.postMessage({
+      // The token you used to initialize your app
+      token: process.env.SLACK_BOT_TOKEN,
+      channel: id,
+      text: text
+      // You could also use a blocks[] array to send richer content
+    });
+
+    // Print result, which includes information about the message (like TS)
+    console.log(result);
+  }
+  catch (error) {
+    console.error(error);
+  }
+}
+
+// Reply to a message with the channel ID and message TS
+async function replyMessage(id, ts, replyMessage) {
+  try {
+    // Call the chat.postMessage method using the built-in WebClient
+    const result = await app.client.chat.postMessage({
+      // The token you used to initialize your app
+      token: process.env.SLACK_BOT_TOKEN,
+      channel: id,
+      thread_ts: ts,
+      text: replyMessage
+      // You could also use a blocks[] array to send richer content
+    });
+
+    // Print result
+    console.log(result);
+  }
+  catch (error) {
+    console.error(error);
+  }
+}
+
+
+
+// Find conversation ID using the conversations.list method
+async function findConversation(name) {
+  try {
+    // Call the conversations.list method using the built-in WebClient
+    const result = await app.client.conversations.list({
+      // The token you used to initialize your app
+      token: process.env.SLACK_BOT_TOKEN
+    });
+
+    for (const channel of result.channels) {
+      if (channel.name === name) {
+        conversationId = channel.id;
+
+        // Print result
+        console.log("Found conversation ID: " + conversationId);
+        // Break from for loop
+        break;
+      }
+    }
+  }
+  catch (error) {
+    console.error(error);
+  }
+}
+
 async function getStatus(slackMemberId){
 	const response = await app.client.users.profile.get({ user: slackMemberId });
 	if (!response.ok) throw Error(response.error);
@@ -198,7 +345,7 @@ async function getStatus(slackMemberId){
 
 async function setStatus(slackMemberId, status, status_emoji){
   const now = Date.now();
-  var expiration_time = (now /1000)+30; //expire in 30 seconds
+  var expiration_time = (now /1000)+8*60*60; //expire in 8 hours
   //TODO: expire "today" at 6pm
 
 	const response = await app.client.users.profile.set({
